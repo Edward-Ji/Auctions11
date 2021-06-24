@@ -56,7 +56,7 @@ class Tit4TatBidder(Bidder):
             else:
                 return self.cash
     
-    def notify_bids(self, others: list[int]) -> None:
+    def notify_bids(self, others: list[int], sold: int) -> None:
         
         # record other's bidding activities
         others_bids: iter = iter(self.others_bids)
@@ -67,7 +67,7 @@ class Tit4TatBidder(Bidder):
             next(others_cash).__sub__(other)
         
         # decrement the total quantity of this game
-        self.quantity -= 1
+        self.quantity -= sold
         
         # increment the number of rounds
         self.n_rounds += 1

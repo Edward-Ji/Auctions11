@@ -47,9 +47,10 @@ class Bidder:
         pass
     
     @abstractmethod
-    def notify_bids(self, others: list[int]) -> None:
+    def notify_bids(self, others: list[int], sold: int) -> None:
         """
         Notify player of the bids of all other bidders
         :param others: a list of all bids by the other bidders
+        :param sold: the quantity sold this round
         """
         pass

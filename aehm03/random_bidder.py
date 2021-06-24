@@ -18,5 +18,5 @@ class RandomBidder(Bidder):
     def place_bid(self) -> int:
         return randint(0, min(self.max_bid, self.cash))
 
-    def notify_bids(self, others: list[int]) -> None:
+    def notify_bids(self, others: list[int], sold: int) -> None:
         pass

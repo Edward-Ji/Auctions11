@@ -1,8 +1,10 @@
-import abc
+import logging
 
 from bidder import Bidder
 from random_bidder import RandomBidder
 from tit4tat_bidder import Tit4TatBidder
+
+# logging.basicConfig(filename='debug.log', encoding='utf-8', level=logging.DEBUG)
 
 
 class Auction:
@@ -32,20 +34,15 @@ class Auction:
             bidder.start_game(quantity, self._start_cash, self.n_bidders)
         
         while quantity > 0:
+            logging.debug("quantity left: {}".format(quantity))
             # make bidders place bids
             bids: list[int] = []
             for bidder in self.bidders:
                 bid: int = bidder.place_bid()
-                bidder.cash -= bid
-                if bidder.cash < 0:
-                    bidder.cash += bid
-                    bidder.bid = 0
+                logging.debug("{} places bid {}".format(bidder.name, bid))
+                if bidder.cash < bid:
+                    bid = 0
                 bids.append(bid)
-            
-            # notify them of others bids
-            i: int = 0
-            for bidder in self.bidders:
-                bidder.notify_bids(bids[:i] + bids[i+1:])
             
             # abort auction if all bidders are broke
             if all(map(lambda b: b.cash == 0, self.bidders)):
@@ -65,9 +62,16 @@ class Auction:
             
             if len(max_bidders) != 1:
                 continue
-            
-            max_bidder: Bidder = max_bidders[0]
-            max_bidder.acquired += 1
+
+            max_bidders[0].cash -= max_bid_val
+            max_bidders[0].acquired += 1
+            quantity -= 1
+            logging.debug("{} acquired the item".format(max_bidders[0].name))
+
+            # notify them of others bids
+            i: int = 0
+            for bidder in self.bidders:
+                bidder.notify_bids(bids[:i] + bids[i + 1:], 1)
             
         # determine winner
         max_acq_val: int = 0
