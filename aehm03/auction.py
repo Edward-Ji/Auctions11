@@ -4,7 +4,9 @@ from bidder import Bidder
 from random_bidder import RandomBidder
 from tit4tat_bidder import Tit4TatBidder
 
-# logging.basicConfig(filename='debug.log', encoding='utf-8', level=logging.DEBUG)
+logging.basicConfig(filename='debug.log',
+                    filemode='w',
+                    level=logging.WARNING)
 
 
 class Auction:
@@ -19,7 +21,9 @@ class Auction:
             RandomBidder(1, max_bid=3),
             RandomBidder(2),
             RandomBidder(3, max_bid=5),
-            Tit4TatBidder(4)
+            Tit4TatBidder(4, lead=1),
+            Tit4TatBidder(5),
+            Tit4TatBidder(6, lead=3),
         ]
         
     @property
@@ -36,9 +40,9 @@ class Auction:
         while quantity > 0:
             logging.debug("quantity left: {}".format(quantity))
             # make bidders place bids
-            bids: list[int] = []
+            bids: list[float] = []
             for bidder in self.bidders:
-                bid: int = bidder.place_bid()
+                bid: float = bidder.place_bid()
                 logging.debug("{} places bid {}".format(bidder.name, bid))
                 if bidder.cash < bid:
                     bid = 0
@@ -49,7 +53,7 @@ class Auction:
                 break
             
             # distribute
-            max_bid_val: int = 0
+            max_bid_val: float = 0
             max_bidders: list[Bidder] = []
             bids_iter = iter(bids)
             for bidder in self.bidders:
@@ -59,14 +63,14 @@ class Auction:
                     max_bidders = [bidder]
                 elif bid == max_bid_val:
                     max_bidders.append(bidder)
-            
-            if len(max_bidders) != 1:
-                continue
 
-            max_bidders[0].cash -= max_bid_val
-            max_bidders[0].acquired += 1
-            quantity -= 1
-            logging.debug("{} acquired the item".format(max_bidders[0].name))
+            for bidder in max_bidders:
+                bidder.cash -= max_bid_val / len(max_bidders)
+                bidder.acquired += 1 / len(max_bidders)
+                quantity -= 1
+                logging.debug("{} acquired the item".format(
+                    ", ".join(map(lambda b: b.name, max_bidders))
+                ))
 
             # notify them of others bids
             i: int = 0
@@ -74,7 +78,7 @@ class Auction:
                 bidder.notify_bids(bids[:i] + bids[i + 1:], 1)
             
         # determine winner
-        max_acq_val: int = 0
+        max_acq_val: float = 0
         max_bidders = []
         for bidder in self.bidders:
             if bidder.acquired > max_acq_val:

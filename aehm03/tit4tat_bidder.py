@@ -1,5 +1,3 @@
-from math import ceil
-
 from bidder import Bidder
 
 
@@ -19,16 +17,16 @@ class Tit4TatBidder(Bidder):
         self.lead: int = 2
         super().__init__(number, **options)
         self.n_rounds: int = 0
-        self.others_cash: list[int] = []
-        self.others_bids: list[list[int]] = [[]]
+        self.others_cash: list[float] = []
+        self.others_bids: list[list[float]] = [[]]
 
     def start_game(self, quantity: int, cash: int, n_bidders: int):
         super().start_game(quantity, cash, n_bidders)
         self.n_rounds = 1
         self.others_cash = [cash for _ in range(self.n_bidders-1)]
-        self.others_bids: list[list[int]] = [[] for _ in range(self.n_bidders-1)]
+        self.others_bids = [[] for _ in range(self.n_bidders-1)]
         
-    def place_bid(self) -> int:
+    def place_bid(self) -> float:
         # special cases
         if self.cash == 0:
             # no cash, no bid
@@ -50,13 +48,13 @@ class Tit4TatBidder(Bidder):
         if all(map(lambda x: x < self.max_amount, others_sum)):
             return 1
         else:
-            bid_price = ceil(self.cash / self.quantity) + self.lead
+            bid_price = self.cash / self.quantity + self.lead
             if bid_price <= self.cash:
                 return bid_price
             else:
                 return self.cash
     
-    def notify_bids(self, others: list[int], sold: int) -> None:
+    def notify_bids(self, others: list[float], sold: int) -> None:
         
         # record other's bidding activities
         others_bids: iter = iter(self.others_bids)

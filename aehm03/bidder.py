@@ -14,7 +14,7 @@ class Bidder:
         self.cash: int = 0
         self.quantity: int = 0
         self.n_bidders: int = 0
-        self.acquired: int = 0
+        self.acquired: float = 0
         self._name = "Bidder no.{}: {}".format(
             number,
             type(self).__name__.removesuffix("Bidder")
@@ -39,7 +39,7 @@ class Bidder:
         self.acquired = 0
 
     @abstractmethod
-    def place_bid(self) -> int:
+    def place_bid(self) -> float:
         """
         Returns the bid for the current auctioning product (>= 0)
         :return: the next bid
@@ -47,7 +47,7 @@ class Bidder:
         pass
     
     @abstractmethod
-    def notify_bids(self, others: list[int], sold: int) -> None:
+    def notify_bids(self, others: list[float], sold: int) -> None:
         """
         Notify player of the bids of all other bidders
         :param others: a list of all bids by the other bidders
