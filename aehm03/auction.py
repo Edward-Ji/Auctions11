@@ -6,7 +6,7 @@ from tit4tat_bidder import Tit4TatBidder
 
 logging.basicConfig(filename='debug.log',
                     filemode='w',
-                    level=logging.WARNING)
+                    level=logging.DEBUG)
 
 
 class Auction:
@@ -18,12 +18,16 @@ class Auction:
         self.q_per_auction: int = 2
 
         self.bidders: list[Bidder] = [
-            RandomBidder(1, max_bid=3),
-            RandomBidder(2),
-            RandomBidder(3, max_bid=5),
-            Tit4TatBidder(4, lead=1),
-            Tit4TatBidder(5),
-            Tit4TatBidder(6, lead=3),
+            RandomBidder(1, max_bid=2),
+            RandomBidder(2, max_bid=3),
+            RandomBidder(3),
+            RandomBidder(4, max_bid=5),
+            RandomBidder(5, max_bid=6),
+            Tit4TatBidder(6, lead=1),
+            Tit4TatBidder(7),
+            Tit4TatBidder(8, lead=3),
+            Tit4TatBidder(9, lead=4),
+            Tit4TatBidder(10, lead=5),
         ]
         
     @property
@@ -110,4 +114,4 @@ def test(n: int):
         print("{:24} score {:5}".format(player.name, n_win))
 
 
-test(1000)
+test(1)
