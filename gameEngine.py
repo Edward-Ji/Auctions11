@@ -77,7 +77,7 @@ class GameEngine():
             "numPlayers": 0,
             "knownTrueValueProbability": 0.75,
             "penaltyMax": meanTrueValue+stdDevValue*3,
-            "auctionsCount": 1
+            "auctionsCount": 5
         }
         self.competitors = []
         self.teams = {}
@@ -301,7 +301,7 @@ class GameEngine():
                 self.internalPrint("error",self.currentPrintingPlayer,f"Bad report of known value bots! Reported bot {tm} was not a positive integer.")
         if reportingDone and self.teams[self.currentPrintingPlayer]["protoReportScore"]<protoReportScore:
             self.teams[self.currentPrintingPlayer]["protoReportScore"]=protoReportScore
-
+        
     def _internalPrint(self,loggingLevel,source,msg):
         if loggingLevel in self.loggingLevel:
             formattedMessage = self.formatMessage(source,msg)

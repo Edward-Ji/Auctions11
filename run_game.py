@@ -4,15 +4,15 @@ from gameEngine import GameEngine, NPCRandomBot
 import importlib
 
 botsToRun = {
-    "christie.test": 2,
-    "examples.randomBidder": 2,
-    "examples.randomAccuser": 2,
-    "NPC": 2
+    "christie.test": 3,
+    "examples.randomBidder": 3,
+    "examples.randomAccuser": 3,
+    "NPC": 3
 }
 
 engine = GameEngine()
 
-engine.gameParameters["auctionsCount"] = 10
+engine.gameParameters["auctionsCount"] = 5
 
 # Warning: Timeouts are not enforced locally - so if you have an infinite loop, beware!
 for b in botsToRun:
