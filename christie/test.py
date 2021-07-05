@@ -15,6 +15,9 @@ class CompetitorInstance:
     
     def onAuctionStart(self, index, trueValue):
         self.auction_history = []
+        self.opponent_bots = set()
+        self.last_bid = 0
+        self.round_count = 0
         
         self.players[index] = self
         
@@ -25,8 +28,13 @@ class CompetitorInstance:
     
     def onBidMade(self, whoMadeBid, howMuch):
         self.auction_history.append((whoMadeBid, howMuch))
+        if howMuch - self.last_bid > self.gameParameters["minimumBid"] * 3:
+            self.opponent_bots.add(whoMadeBid)
+        self.last_bid = howMuch
     
     def onMyTurn(self, lastBid):
+        self.round_count += 1
+        
         if self.shared_true_value != -1:
             true_value = self.shared_true_value
         else:
@@ -38,29 +46,11 @@ class CompetitorInstance:
         least_bid = lastBid + self.gameParameters["minimumBid"]
         if least_bid < true_value:
             self.engine.makeBid(least_bid)
+            self.last_bid = least_bid
     
     def onAuctionEnd(self):
-        # get indices of bots on the same team
         team_bots = list(self.players.keys())
-        
-        # get indices of opponent bots
-        mean_true_value = self.gameParameters["meanTrueValue"]
-        dare_score = {}
-        for index, value in self.auction_history:
-            score = 50/32
-            if value > mean_true_value / 4:
-                score = 100/16
-            if value > mean_true_value * 3/4:
-                score = 50/2
-            if index in dare_score:
-                dare_score[index] += score
-            else:
-                dare_score[index] = score
-        opponent_bots = sorted(dare_score.keys(),
-                               key=lambda i: dare_score[i],
-                               reverse=True)
-        opponent_bots = [index for index in opponent_bots if index not in self.players.keys()][:-1]
-        
-        # get indices of bots who know the true value
+        opponent_bots = list(self.opponent_bots)
         true_value_bots = [self.shared_index_known] if self.shared_index_known != -1 else []
+        
         self.engine.reportTeams(team_bots, opponent_bots, true_value_bots)
