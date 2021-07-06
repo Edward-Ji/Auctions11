@@ -110,6 +110,8 @@ class CompetitorInstance:
             opponent_bots = []
         
         # calculate true value bots
-        true_value_bots = []
+        true_value_bots = [i for i in team_bots if
+                           self.bid_counts["mid"][i] != 0 or
+                           self.bid_counts["high"][i] != 0]
 
         self.engine.reportTeams(team_bots, opponent_bots, true_value_bots)
