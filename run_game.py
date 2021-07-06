@@ -5,7 +5,7 @@ import importlib
 
 botsToRun = {
     "christie.hypo_testing": 3,
-    "examples.randomBidder": 3,
+    "christie.follow_through": 3,
     "examples.oneGreater": 3,
     "NPC": 3
 }
