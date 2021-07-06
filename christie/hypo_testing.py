@@ -78,6 +78,8 @@ class CompetitorInstance:
             self.last_bid = least_bid
             
     def onAuctionEnd(self):
+        MIN_ROUND = 5
+        
         # Now is the time to report team members, or do any cleanup.
         num_players = self.gameParameters["numPlayers"]
         sqrt = self.engine.math.sqrt
@@ -86,13 +88,13 @@ class CompetitorInstance:
         team_bots = []
         for i in range(num_players):
             if abs(self.seven_mul_counts[i] - self.bid_counts["total"][i]) <= 1 and \
-                    self.bid_counts["total"][i] != 0:
+                    self.bid_counts["total"][i] > MIN_ROUND:
                 team_bots.append(i)
         if len(team_bots) > 3:
             team_bots.clear()
         
         # calculate opponent bots
-        if sum(self.round_counts.values()) > 5:
+        if sum(self.round_counts.values()) > MIN_ROUND:
             npc_probs = []
             for i in range(num_players):
                 npc_prob = 1
