@@ -1,5 +1,9 @@
-import random   
-class CompetitorInstance:   
+class CompetitorInstance:
+    
+    players = {}
+    shared_index_known = -1
+    shared_true_value = -1
+    
     def __init__(self):
         # initialize personal variables
         self.bid_history = []
