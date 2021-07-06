@@ -66,7 +66,7 @@ class CompetitorInstance:
         if self.true_value == -1:
             true_value = self.gameParameters["meanTrueValue"] / 4
         else:
-            true_value = self.true_value
+            true_value = self.true_value - self.gameParameters["knowledgePenalty"]
             
         least_bid = lastBid + self.gameParameters["minimumBid"]
         
@@ -80,8 +80,7 @@ class CompetitorInstance:
     def onAuctionEnd(self):
         # Now is the time to report team members, or do any cleanup.
         num_players = self.gameParameters["numPlayers"]
-        sqrt = self.engine.math.sqrt
-
+        
         # calculate teammate bots
         team_bots = []
         for i in range(num_players):
@@ -92,22 +91,22 @@ class CompetitorInstance:
             team_bots.clear()
         
         # calculate opponent bots
-        if sum(self.round_counts.values()) > 5:
-            npc_probs = []
-            for i in range(num_players):
-                npc_prob = 1
-                for stage, prob in self.STAGE_PROB.items():
-                    if self.round_counts[stage] == 0:
-                        continue
-                    x = self.bid_counts[stage][i] / self.round_counts[stage]
-                    mean = prob
-                    sd = sqrt(prob * (1-prob) / self.round_counts[stage])
-                    test_stat = (x - mean) / sd
-                    npc_prob *= abs(0.5 - self.prob_norm(test_stat))
-                npc_probs.append(npc_prob)
-            opponent_bots = sorted(range(num_players), key=lambda i: npc_probs[i])[3:]
-        else:
-            opponent_bots = []
+        sqrt = self.engine.math.sqrt
+        npc_probs = []
+        for i in range(num_players):
+            npc_prob = 1
+            for stage, prob in self.STAGE_PROB.items():
+                if self.round_counts[stage] == 0:
+                    continue
+                x = self.bid_counts[stage][i] / self.round_counts[stage]
+                mean = prob
+                sd = sqrt(prob * (1-prob) / self.round_counts[stage])
+                test_stat = (x - mean) / sd
+                npc_prob *= abs(0.5 - self.prob_norm(test_stat))
+            npc_probs.append(npc_prob)
+        
+        opponent_bots = sorted(range(num_players), key=lambda i: npc_probs[i])[3:]
+        opponent_bots = [i for i in opponent_bots if i not in team_bots]
         
         # calculate true value bots
         true_value_bots = []

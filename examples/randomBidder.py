@@ -20,6 +20,4 @@ class CompetitorInstance():
         pass
 
     def onAuctionEnd(self):
-        # Now is the time to request a swap, if you want
-        # engine.swapTo(12)
         pass
