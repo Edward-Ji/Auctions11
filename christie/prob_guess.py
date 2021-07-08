@@ -1,5 +1,9 @@
 import random   
-class CompetitorInstance:   
+class CompetitorInstance:
+    
+    players = []
+    shared_true_value = 0
+    
     def __init__(self):
         # initialize personal variables
         self.bid_history = []
@@ -53,9 +57,6 @@ class CompetitorInstance:
             true_value = self.shared_true_value
         else:
             true_value = self.gameParameters["meanTrueValue"]
-        
-        if self.true_value != -1:
-            true_value -= self.gameParameters["knowledgePenalty"]
         
         least_bid = lastBid + self.gameParameters["minimumBid"]
         if least_bid < true_value:

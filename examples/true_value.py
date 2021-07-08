@@ -28,12 +28,12 @@ class CompetitorInstance:
     
     def onAuctionStart(self, index, trueValue):
         # index is the current player's index, that usually stays put from game to game
-        # trueValue is -1 if this bot doesn't know the true value
+        # trueValue is -1 if this bot doesn't know the true value 
         self.index = index
         self.true_value = trueValue
         self.last_bid = 0
         self.last_bid_index = 0
-        
+
         count_list = [0] * self.gameParameters["numPlayers"]
         self.bid_counts = {"low": count_list.copy(),
                            "mid": count_list.copy(),
@@ -42,7 +42,7 @@ class CompetitorInstance:
         self.seven_mul_counts = count_list.copy()
         
         self.round_counts = {"low": 0, "mid": 0, "high": 0}
-    
+        
     def onBidMade(self, whoMadeBid, howMuch):
         # whoMadeBid is the index of the player that made the bid
         # howMuch is the amount that the bid was
@@ -58,62 +58,53 @@ class CompetitorInstance:
         # save latest bid information
         self.last_bid = howMuch
         self.last_bid_index = whoMadeBid
-    
+
     def onMyTurn(self, lastBid):
-        # increment round count
-        self.round_counts[self.stage(lastBid)] += 1
-        
         if self.true_value == -1:
             true_value = self.gameParameters["meanTrueValue"] / 4
         else:
             true_value = self.true_value
-        
+            
         least_bid = lastBid + self.gameParameters["minimumBid"]
         
-        if least_bid % 7 != 0:
-            least_bid += 7 - least_bid % 7
-        
-        if least_bid <= true_value:
-            self.engine.makeBid(least_bid)
+        if least_bid < true_value - 1000:
+            self.engine.makeBid(true_value - 1000)
             self.last_bid = least_bid
-    
+        elif least_bid < true_value:
+            self.engine.makeBid(least_bid)
+            
     def onAuctionEnd(self):
-        MIN_ROUND = 5
-        
         # Now is the time to report team members, or do any cleanup.
         num_players = self.gameParameters["numPlayers"]
-        sqrt = self.engine.math.sqrt
         
         # calculate teammate bots
         team_bots = []
         for i in range(num_players):
             if abs(self.seven_mul_counts[i] - self.bid_counts["total"][i]) <= 1 and \
-                    abs(self.bid_counts["low"][i] - self.round_counts["low"]) <= 1:
+                    self.bid_counts["total"][i] != 0:
                 team_bots.append(i)
         if len(team_bots) > 3:
             team_bots.clear()
         
         # calculate opponent bots
-        if sum(self.round_counts.values()) > MIN_ROUND:
-            npc_probs = []
-            for i in range(num_players):
-                npc_prob = 1
-                for stage, prob in self.STAGE_PROB.items():
-                    if self.round_counts[stage] == 0:
-                        continue
-                    x = self.bid_counts[stage][i] / self.round_counts[stage]
-                    mean = prob
-                    sd = sqrt(prob * (1 - prob) / self.round_counts[stage])
-                    test_stat = (x - mean) / sd
-                    npc_prob *= abs(0.5 - self.prob_norm(test_stat))
-                npc_probs.append(npc_prob)
-            opponent_bots = sorted(range(num_players), key=lambda i: npc_probs[i])[3:]
-        else:
-            opponent_bots = []
+        sqrt = self.engine.math.sqrt
+        npc_probs = []
+        for i in range(num_players):
+            npc_prob = 1
+            for stage, prob in self.STAGE_PROB.items():
+                if self.round_counts[stage] == 0:
+                    continue
+                x = self.bid_counts[stage][i] / self.round_counts[stage]
+                mean = prob
+                sd = sqrt(prob * (1-prob) / self.round_counts[stage])
+                test_stat = (x - mean) / sd
+                npc_prob *= abs(0.5 - self.prob_norm(test_stat))
+            npc_probs.append(npc_prob)
+        
+        opponent_bots = sorted(range(num_players), key=lambda i: npc_probs[i])[3:]
+        opponent_bots = [i for i in opponent_bots if i not in team_bots]
         
         # calculate true value bots
-        true_value_bots = [i for i in team_bots if
-                           self.bid_counts["mid"][i] != 0 or
-                           self.bid_counts["high"][i] != 0]
-        
+        true_value_bots = []
+
         self.engine.reportTeams(team_bots, opponent_bots, true_value_bots)

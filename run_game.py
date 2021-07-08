@@ -2,13 +2,14 @@ from gameEngine import GameEngine, NPCRandomBot
 
 # import your bots here
 import importlib
+import random
 
 botsToRun = {
-    "christie.hypo_testing": 3,
-    "christie.follow_through": 3,
-    "examples.oneGreater": 3,
-    "NPC": 3
+    "christie.cooperate": random.randint(2, 3),
+    "christie.hypo_testing": random.randint(2, 3),
+    "christie.hypo_testing2": random.randint(2, 3)
 }
+botsToRun["NPC"] = 10 - sum(botsToRun.values())
 
 engine = GameEngine()
 
