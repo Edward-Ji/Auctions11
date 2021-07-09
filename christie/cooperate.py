@@ -91,7 +91,7 @@ class CompetitorInstance:
                 elif self.n_rounds == 4:
                     least_bid = least_bid + self.true_value // 100
                     self.true_value = -1
-                    
+        
         if len(self.true_value_bots) == 0:
             true_value -= self.gameParameters["stddevTrueValue"]
             
@@ -101,13 +101,11 @@ class CompetitorInstance:
     def predict_team(self):
         if self.n_rounds != 3:
             return
-        
-        num_players = self.gameParameters["numPlayers"]
     
         # calculate teammate bots
         team_bots = []
         for i, bid_history in enumerate(self.bid_history):
-            if len(bid_history) == 2 and \
+            if len(bid_history) >= 2 and \
                     self.bid_history[i][0][1] % self.PRIME == 0 and \
                     self.bid_history[i][1][1] % self.PRIME == 0:
                 team_bots.append(i)
@@ -132,10 +130,13 @@ class CompetitorInstance:
                 test_stat = (x - mean) / sd
                 npc_prob.append(abs(self.prob_norm(test_stat) - 0.5))
             npc_probs.append(npc_prob)
-        opponent_bots = list(filter(lambda i: any(map(lambda p: p > 0.499, npc_probs[i])),
+        opponent_bots = list(filter(lambda i: any(map(lambda p: p > 0.495, npc_probs[i])),
                                          range(num_players)))
         
         self.opponent_bots = opponent_bots
+        
+        self.engine.print("\nNPC prob - Index: {}\n" +
+                          "\n".join(map(str, enumerate(npc_probs))))
     
     def predict_true_value(self):
         if self.n_rounds != 5:

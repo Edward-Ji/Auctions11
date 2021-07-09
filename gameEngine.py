@@ -19,6 +19,8 @@ for y in normalY:
     normalY2.append(_sum)
     _sum+=y
 normalY2 = list(map(lambda x: x/_sum, normalY2))
+
+
 def linterp(x,y,x1):
     for i,xn in enumerate(x):
         if x1<xn:
@@ -27,6 +29,8 @@ def linterp(x,y,x1):
             else:
                 return y[i-1] + (y[i]-y[i-1]) * (x1-x[i-1]) / (xn - x[i-1])
     return y[len(y)-1]
+
+
 class InterruptableThread(threading.Thread):
     def __init__(self, func, *args, **kwargs):
         threading.Thread.__init__(self)
@@ -138,7 +142,7 @@ class GameEngine():
                 self.resettingBidPlayer+1) % len(self.competitors)
             self.lastBidPlayer = self.resettingBidPlayer
             self.nPassed = 0
-            self.trueValue = int ( linterp(normalY2, normalX, random.random())* self.gameParameters["stddevTrueValue"] + self.gameParameters["meanTrueValue"])
+            self.trueValue = int(linterp(normalY2, normalX, random.random())* self.gameParameters["stddevTrueValue"] + self.gameParameters["meanTrueValue"])
             self.internalPrint("minlog","!ml",f"t:{self.trueValue}|")
             # decide who gets true value
             teamsWhoGetTrueValue = {}  # key = teamno, val = whoInTeamGetsIt
