@@ -26,6 +26,13 @@ class CompetitorInstance:
         self.engine = engine
         # gameParameters: A dictionary containing a variety of game parameters
         self.gameParameters = gameParameters
+        
+        count_list = [0] * self.gameParameters["numPlayers"]
+        self.bid_counts = {"low": count_list.copy(),
+                           "mid": count_list.copy(),
+                           "high": count_list.copy(),
+                           "total": count_list.copy()}
+        self.stage_counts = {"low": 0, "mid": 0, "high": 0}
     
     def onAuctionStart(self, index, trueValue):
         # index is the current player's index, that usually stays put from game to game
@@ -36,14 +43,7 @@ class CompetitorInstance:
         self.last_bid_index = 11
         self.n_rounds = 0
         
-        count_list = [0] * self.gameParameters["numPlayers"]
-        self.bid_counts = {"low": count_list.copy(),
-                           "mid": count_list.copy(),
-                           "high": count_list.copy(),
-                           "total": count_list.copy()}
         self.bid_history = [[] for _ in range(self.gameParameters["numPlayers"])]
-        
-        self.stage_counts = {"low": 0, "mid": 0, "high": 0}
 
         self.team_bots = []
         self.opponent_bots = []
@@ -93,9 +93,11 @@ class CompetitorInstance:
                     self.true_value = -1
         
         if len(self.true_value_bots) == 0:
-            true_value -= self.gameParameters["stddevTrueValue"]
+            true_value = self.gameParameters["meanTrueValue"] - self.gameParameters["stddevTrueValue"]
             
         if least_bid <= true_value:
+            if true_value - least_bid < self.gameParameters["minimumBid"] * self.gameParameters["numPlayers"]:
+                least_bid = true_value - self.gameParameters["minimumBid"] + 1
             self.engine.makeBid(least_bid)
             
     def predict_team(self):
@@ -119,7 +121,7 @@ class CompetitorInstance:
         # calculate opponent bots
         npc_probs = []
         for i in range(num_players):
-            npc_prob = []
+            p_values = []
             # hypothesis test bid probability for each stage
             for stage, prob in self.STAGE_PROB.items():
                 if self.stage_counts[stage] == 0:
@@ -128,14 +130,14 @@ class CompetitorInstance:
                 mean = prob
                 sd = sqrt(prob * (1 - prob) / self.stage_counts[stage])
                 test_stat = (x - mean) / sd
-                npc_prob.append(abs(self.prob_norm(test_stat) - 0.5))
-            npc_probs.append(npc_prob)
-        opponent_bots = list(filter(lambda i: any(map(lambda p: p > 0.495, npc_probs[i])),
-                                         range(num_players)))
+                p_values.append(2 * self.prob_norm(-abs(test_stat)))
+            npc_probs.append(p_values)
+        opponent_bots = list(filter(lambda i: any(map(lambda p: p < 0.0008, npc_probs[i])),
+                                    range(num_players)))
         
         self.opponent_bots = opponent_bots
         
-        self.engine.print("\nNPC prob - Index: {}\n" +
+        self.engine.print(f"\nNPC prob - Index: {self.index}\n" +
                           "\n".join(map(str, enumerate(npc_probs))))
     
     def predict_true_value(self):
@@ -152,6 +154,9 @@ class CompetitorInstance:
                 last_bid, made_bid = self.bid_history[i][3]
                 self.true_value += (made_bid - last_bid - minimum_bid) * 100
                 self.true_value_bots = [i]
+
+        self.engine.print(f"\nBid history - Index: {self.index}\n" +
+                          "\n".join(map(str, enumerate(self.bid_history))))
     
     def onAuctionEnd(self):
         self.predict_opponent()
