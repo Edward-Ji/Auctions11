@@ -91,8 +91,10 @@ class CompetitorInstance:
                 elif self.n_rounds == 4:
                     least_bid = least_bid + self.true_value // 100
                     self.true_value = -1
+                    self.true_value_bots = [self.index]
         
-        if len(self.true_value_bots) == 0:
+        if self.n_rounds >= 5 and \
+                len(self.true_value_bots) == 0:
             true_value = self.gameParameters["meanTrueValue"] - self.gameParameters["stddevTrueValue"]
             
         if least_bid <= true_value:
@@ -137,8 +139,8 @@ class CompetitorInstance:
         
         self.opponent_bots = opponent_bots
         
-        self.engine.print(f"\nNPC prob - Index: {self.index}\n" +
-                          "\n".join(map(str, enumerate(npc_probs))))
+        # self.engine.print(f"\nNPC prob - Index: {self.index}\n" +
+        #                   "\n".join(map(str, enumerate(npc_probs))))
     
     def predict_true_value(self):
         if self.n_rounds != 5:
@@ -155,10 +157,15 @@ class CompetitorInstance:
                 self.true_value += (made_bid - last_bid - minimum_bid) * 100
                 self.true_value_bots = [i]
 
-        self.engine.print(f"\nBid history - Index: {self.index}\n" +
-                          "\n".join(map(str, enumerate(self.bid_history))))
+        # self.engine.print(f"\nBid history - Index: {self.index}\n" +
+        #                   "\n".join(map(str, enumerate(self.bid_history))))
     
     def onAuctionEnd(self):
         self.predict_opponent()
         
+        if len(self.true_value_bots) != 0 and self.index == self.true_value_bots[0] or \
+                len(self.true_value_bots) == 0 and len(self.team_bots) != 0 and self.index == self.team_bots[0]:
+            self.true_value_bots = [i for i in range(self.gameParameters["numPlayers"])
+                                    if i not in self.team_bots or i in self.true_value_bots]
+                
         self.engine.reportTeams(self.team_bots, self.opponent_bots, self.true_value_bots)
