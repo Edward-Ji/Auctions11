@@ -1,4 +1,5 @@
 class CompetitorInstance:
+    
     def __init__(self):
         # initialize constant variables
         self.STAGE_PROB = {
@@ -6,7 +7,7 @@ class CompetitorInstance:
             "mid": 0.16,
             "high": 0.04
         }
-        self.PRIME = 13
+        self.PRIME = 17
     
     def prob_norm(self, x):
         q = self.engine.math.erf(x / self.engine.math.sqrt(2.0))
@@ -83,20 +84,20 @@ class CompetitorInstance:
             if least_bid % self.PRIME != 0:
                 least_bid += self.PRIME - least_bid % self.PRIME
             true_value = self.gameParameters["meanTrueValue"]
-        else:
+        elif self.n_rounds == 3:
             # third round onwards true value bot broadcast ture value
             if self.true_value != -1:
-                if self.n_rounds == 3:
-                    least_bid = least_bid + self.true_value % 100
-                elif self.n_rounds == 4:
-                    least_bid = least_bid + self.true_value // 100
-                    self.true_value = -1
-                    self.true_value_bots = [self.index]
+                least_bid = least_bid + self.true_value % 100
+        elif self.n_rounds == 4:
+            if self.true_value != -1:
+                least_bid = least_bid + self.true_value // 100
+                self.true_value -= self.gameParameters["knowledgePenalty"]
+                self.true_value_bots = [self.index]
         
-        if self.n_rounds >= 5 and \
-                len(self.true_value_bots) == 0:
-            true_value = self.gameParameters["meanTrueValue"] - self.gameParameters["stddevTrueValue"]
-            
+        if self.n_rounds >= 5:
+            if len(self.true_value_bots) == 0:
+                true_value = self.gameParameters["meanTrueValue"] - self.gameParameters["stddevTrueValue"]
+
         if least_bid <= true_value:
             if true_value - least_bid < self.gameParameters["minimumBid"] * self.gameParameters["numPlayers"]:
                 least_bid = true_value - self.gameParameters["minimumBid"] + 1
