@@ -7,7 +7,7 @@ class CompetitorInstance:
             "mid": 0.16,
             "high": 0.04
         }
-        self.PRIME = 17
+        self.PRIME = 23
     
     def prob_norm(self, x):
         q = self.engine.math.erf(x / self.engine.math.sqrt(2.0))

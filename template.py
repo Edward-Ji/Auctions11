@@ -20,10 +20,6 @@ class CompetitorInstance():
         pass
 
     def onMyTurn(self,lastBid):
-        # lastBid is the last bid that was made
-        if (lastBid < self.gameParameters["meanTrueValue"]):
-            # But don't bid too high!
-            self.engine.makeBid(lastBid+11)
         pass
 
     def onAuctionEnd(self):

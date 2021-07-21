@@ -6,10 +6,16 @@ import threading
 import ctypes
 import importlib
 
-availableImports = ["random","math","time"]
+availableImports = [
+    ["random","random"],
+    ["math","math"],
+    ["time","time"],
+#    ["decimal","decimal"],
+#    ["scipy.stats","stats"]
+]
 
 log_file_cap=1000*1000 # 1kb max log file size
-functionExecutionTime = 0.05
+functionExecutionTime = 0.07
 
 normalX = list(map(lambda x: x/50-1, range(0,100)))
 normalY = list(map(lambda x: (math.e **(-x**2/2))/math.sqrt(2*math.pi), normalX))
@@ -27,6 +33,9 @@ def linterp(x,y,x1):
             else:
                 return y[i-1] + (y[i]-y[i-1]) * (x1-x[i-1]) / (xn - x[i-1])
     return y[len(y)-1]
+
+def makeTrueValue(meanv ,sdv):
+    return int ( linterp(normalY2, normalX, random.random())* sdv + meanv)
 class InterruptableThread(threading.Thread):
     def __init__(self, func, *args, **kwargs):
         threading.Thread.__init__(self)
@@ -55,6 +64,8 @@ def kill_thread(thread):
         ctypes.pythonapi.PyThreadState_SetAsyncExc(thread_id, 0)
         print('Exception raise failure')
 
+
+
 class GameEngine():
     def __init__(self, logs="all"):
         if logs == "all":
@@ -75,10 +86,14 @@ class GameEngine():
             "meanTrueValue": meanTrueValue,
             "stddevTrueValue": stdDevValue,
             "numPlayers": 0,
-            "knownTrueValueProbability": 0.75,
+            "knownTrueValueProbability": 1,
             "penaltyMax": meanTrueValue+stdDevValue*3,
             "auctionsCount":5
         }
+        if random.random()<0.3:
+            self.gameParameters["phase"]="phase_2"
+        else:
+            self.gameParameters["phase"]="phase_1"
         self.competitors = []
         self.teams = {}
         self.allPassed = True
@@ -86,23 +101,27 @@ class GameEngine():
         # libraries
         self.currentPrintingPlayer=""
         for toImport in availableImports:
-            self.__dict__[toImport]=importlib.import_module(toImport)
+            try:
+                self.__dict__[toImport[1]]=importlib.import_module(toImport[0])
+            except Exception:
+                # Some people may not have scipy installed on their system, don't complain
+                pass
         pass
 
-    def callWithTimeout(self,team, fn, t, *args, **kwargs):
+    def callWithTimeout(self,team, fname,fn, t, *args, **kwargs):
         self.currentPrintingPlayer=team
         def tryfn(*args, **kwargs):
             try:
                 fn(*args, **kwargs)
             except Exception as e:
-                self.internalPrint("error",team,f"Team {team}'s execution raised an error:{type(e)} {e}")
+                self.internalPrint("error",team,f"Team {team}'s execution of {fname} raised an error:{type(e)} {e}")
         it = InterruptableThread(tryfn, *args, **kwargs)
         it.start()
         it.join(t)
         if not it.is_alive():
             return it.result
         kill_thread(it)
-        self.internalPrint("error",team,f"Team {team}'s execution timed out (>{t}s)")
+        self.internalPrint("error",team,f"Team {team}'s execution of {fname} timed out (>{t}s)")
 
     def registerBot(self, bot, team=None):
         self.competitors.append({
@@ -123,48 +142,62 @@ class GameEngine():
 
     def runGame(self):
         random.shuffle(self.competitors)
-        self.internalPrint("minlog","!ml",f"{','.join([c['team'] for c in self.competitors])}|{self.gameParameters['meanTrueValue']}|{self.gameParameters['stddevTrueValue']}/")
+        self.internalPrint("minlog","!ml",f"{','.join([c['team'] for c in self.competitors])}|{self.gameParameters['meanTrueValue']}|{self.gameParameters['stddevTrueValue']}|{self.gameParameters['phase']}/")
         self.gameParameters["numPlayers"]=len(self.competitors)
+        self.gameParameters["bidOrder"]=[random.randint(0,self.gameParameters["numPlayers"]-1) for i in range(self.gameParameters["auctionsCount"])]
         for c in self.competitors:
-            self.callWithTimeout(c["team"],
+            self.callWithTimeout(c["team"],"onGameStart",
                 c["instance"].onGameStart, functionExecutionTime, self, self.gameParameters)
         for self.auctionNumber in range(self.gameParameters["auctionsCount"]):
             # Reset the game
             self.currentBid = 1
             self.currentTurn = 0
-            self.resettingBidPlayer = random.randint(
-                0, len(self.competitors)-1)
+            self.resettingBidPlayer = self.gameParameters["bidOrder"][self.auctionNumber]
             self.currentBidPlayer = (
                 self.resettingBidPlayer+1) % len(self.competitors)
             self.lastBidPlayer = self.resettingBidPlayer
             self.nPassed = 0
-            self.trueValue = int ( linterp(normalY2, normalX, random.random())* self.gameParameters["stddevTrueValue"] + self.gameParameters["meanTrueValue"])
+            self.trueValue = makeTrueValue(self.gameParameters["meanTrueValue"],self.gameParameters["stddevTrueValue"])
+
+            self.swapList = [i for i in range(self.gameParameters["numPlayers"])]
+
             self.internalPrint("minlog","!ml",f"t:{self.trueValue}|")
             # decide who gets true value
             teamsWhoGetTrueValue = {}  # key = teamno, val = whoInTeamGetsIt
             for t in self.teams:
-                if random.randint(0, 100) > (1-self.gameParameters["knownTrueValueProbability"])*100:
+                #if random.randint(0, 100) > (1-self.gameParameters["knownTrueValueProbability"])*100 and t!="NPC":
+                if t!="NPC":
                     teamsWhoGetTrueValue[t] = random.randint(
                         0, self.teams[t]["playersInTeam"]-1)
                 self.teams[t]["report"]={}
+                self.teams[t]["toSayTV"] = self.trueValue
+                self.teams[t]["toSayNV"] = -1
+                if self.gameParameters["phase"] == "phase_2":
+                    self.teams[t]["toSayNV"] = self.trueValue
+                    self.teams[t]["toSayTV"]=self.teams[t]["toSayNV"]
+                    while self.teams[t]["toSayTV"]==self.teams[t]["toSayNV"]:
+                        self.teams[t]["toSayTV"] = makeTrueValue(self.gameParameters["meanTrueValue"],self.gameParameters["stddevTrueValue"]) 
+
             for i, c in enumerate(self.competitors):
                 initialised = False
                 if c["team"] in teamsWhoGetTrueValue:
                     if teamsWhoGetTrueValue[c["team"]] == 0:
-                        self.callWithTimeout(c["team"],c["instance"].onAuctionStart,functionExecutionTime,i, self.trueValue)
+                        self.callWithTimeout(c["team"],"onAuctionStart",c["instance"].onAuctionStart,functionExecutionTime,i, self.teams[c['team']]["toSayTV"])
                         c["knowsTrue"] = True
                         initialised = True
                         self.internalPrint("minlog","!ml",f"k:{i}|")
                     teamsWhoGetTrueValue[c["team"]] -= 1
                 if not initialised:
-                    self.callWithTimeout(c["team"],c["instance"].onAuctionStart,functionExecutionTime, i,-1)
+                    self.callWithTimeout(c["team"],"onAuctionStart",c["instance"].onAuctionStart,functionExecutionTime, i,self.teams[c['team']]["toSayNV"])
                     c["knowsTrue"] = False
+            # log the teams
+            self.internalPrint("minlog","!ml",f"T:{','.join([c['team'] for c in self.competitors])}|")
             self.internalPrint("engine","engine",f"Starting Auction {self.auctionNumber}")
             self.internalPrint("minlog","!ml",f"{self.currentBidPlayer}:{self.currentBid}|")
             # Main loop
             while self.nPassed < len(self.competitors) and self.currentBid<self.gameParameters["penaltyMax"]:
                 self.protoCurrentBid=-1
-                self.callWithTimeout(self.competitors[self.currentBidPlayer]["team"],
+                self.callWithTimeout(self.competitors[self.currentBidPlayer]["team"],"onMyTurn",
                     self.competitors[self.currentBidPlayer]["instance"].onMyTurn,
                     functionExecutionTime,
                     self.currentBid
@@ -177,7 +210,7 @@ class GameEngine():
                     # save the currentPrintingPlayer so that log owners still make sense
                     savedPlayer = self.currentPrintingPlayer
                     for c in self.competitors:
-                        self.callWithTimeout(c["team"],c["instance"].onBidMade,functionExecutionTime,self.currentBidPlayer,self.currentBid)
+                        self.callWithTimeout(c["team"],"onBidMade",c["instance"].onBidMade,functionExecutionTime,self.currentBidPlayer,self.currentBid)
                     self.currentPrintingPlayer=savedPlayer
                 self.currentBidPlayer = self.currentBidPlayer + 1
                 self.currentBidPlayer = self.currentBidPlayer % len(
@@ -188,25 +221,50 @@ class GameEngine():
             # Finishing the round
             self.nPassed=-1
             teamindex = self.competitors[self.lastBidPlayer]["team"]
-            scoreLog = f"s:{self.lastBidPlayer}:{self.trueValue - self.currentBid - (self.gameParameters['knowledgePenalty'] if self.competitors[self.lastBidPlayer]['knowsTrue'] else 0)}|"
             self.internalPrint("engine","engine","Auction {}: Team {} copped it at a price of {}; true value was {}".format(
                 self.auctionNumber, teamindex if teamindex is not None else "[NPC Random]", self.currentBid, self.trueValue))
+            bidScore = 0
             if teamindex is not None:
-                self.teams[teamindex]["score"] = self.teams[teamindex]["score"] + \
-                    self.trueValue - self.currentBid - \
-                    (self.gameParameters["knowledgePenalty"]
-                     if self.competitors[self.lastBidPlayer]["knowsTrue"] else 0)
+                bidScore = self.trueValue - self.currentBid
+                if (self.competitors[self.lastBidPlayer]["knowsTrue"] and self.gameParameters["phase"]=="phase_1") or ((not self.competitors[self.lastBidPlayer]["knowsTrue"]) and self.gameParameters["phase"]=="phase_2"):
+                    bidScore-= self.gameParameters["knowledgePenalty"] 
+                self.teams[teamindex]["score"] = self.teams[teamindex]["score"] + bidScore
+            scoreLog = f"s:{self.lastBidPlayer}:{bidScore}|"
             for t in self.teams:
                 self.teams[t]["protoReportScore"]=0
                 self.teams[t]["whoReportedBest"]=-1
             for i,c in enumerate(self.competitors):
                 self.currentBidPlayer = i
-                self.callWithTimeout(c["team"],c["instance"].onAuctionEnd,functionExecutionTime)
+                self.callWithTimeout(c["team"],"onAuctionEnd",c["instance"].onAuctionEnd,functionExecutionTime)
             statusLog = "S"
+            #bugHelpScores={
+            #    "OrgesUnited":10,
+            #    "TheLarpers":5,
+            #    "anon":10,
+            #    "PEPERINO":5,
+            #    "x_axis": 10
+            #}
             for t in self.teams:
                 self.teams[t]["score"] += self.teams[t]["protoReportScore"]
+                #if True:
+                #    if t in bugHelpScores:
+                #        self.teams[t]["score"]+=bugHelpScores[t]
+                #        scoreLog += f"B:{t}:{bugHelpScores[t]}|"
                 scoreLog += f"R:{self.teams[t]['whoReportedBest']}:{self.teams[t]['protoReportScore']}|"
                 statusLog+= f":{self.teams[t]['score']}"
+
+            # execute swaps
+            if self.gameParameters["phase"]=="phase_2":
+                self.executeSwapList = []
+                for (i,v) in enumerate(self.swapList):
+                    if i != v:
+                        self.executeSwapList.append([i,v])
+                random.shuffle(self.executeSwapList)
+                for s in self.executeSwapList:
+                    tmp = self.competitors[s[0]]
+                    self.competitors[s[0]]=self.competitors[s[1]]
+                    self.competitors[s[1]]=tmp
+                        
             self.internalPrint("minlog","!ml",scoreLog)
             self.internalPrint("minlog","!ml",statusLog)
             self.internalPrint("minlog","!ml",f"/")
@@ -321,6 +379,18 @@ class GameEngine():
             self.teams[self.currentPrintingPlayer]["protoReportScore"]=protoReportScore
             self.teams[self.currentPrintingPlayer]["whoReportedBest"]=self.currentBidPlayer
 
+    def swapTo(self, newIndex):
+        if type(newIndex)!=int:
+            self.internalPrint("error",self.currentPrintingPlayer,f"Bad swap attempt! Cannot swap to {newIndex}.")
+            return
+        if newIndex<0 or newIndex>=self.gameParameters["numPlayers"]:
+            self.internalPrint("error",self.currentPrintingPlayer,f"Bad swap attempt! Cannot swap to {newIndex}.")
+            return
+        if self.nPassed!=-1:
+            self.internalPrint("error",self.currentPrintingPlayer,f"Bad swap attempt! Not currently end of the auction.")
+            return
+        self.swapList[self.currentBidPlayer]=newIndex
+
     def _internalPrint(self,loggingLevel,source,msg):
         if loggingLevel in self.loggingLevel:
             formattedMessage = self.formatMessage(source,msg)
@@ -337,6 +407,15 @@ class GameEngine():
             self.teams[self.currentPrintingPlayer]["overlogging"]=True
             self.internalPrint('error',self.currentPrintingPlayer,"Log buffer exceeded")
 
+NPCnormalX = list(map(lambda x: x/50, range(0,214)))
+NPCnormalY = list(map(lambda x: (math.e **(-x**2/2))/math.sqrt(2*math.pi), NPCnormalX))
+_sum=0
+NPCnormalY2=[]
+for y in NPCnormalY:
+    NPCnormalY2.append(_sum)
+    _sum+=y
+NPCnormalY2 = list(map(lambda x: x/_sum, NPCnormalY2))
+
 class NPCRandomBot():
     def __init__(self):
         pass
@@ -344,6 +423,7 @@ class NPCRandomBot():
     def onGameStart(self, engine, gameParameters):
         self.mean = gameParameters["meanTrueValue"]
         self.minp = gameParameters["minimumBid"]
+        self.ph2 = gameParameters["phase"] == "phase_2"
         self.engine = engine
 
     def onAuctionStart(self, index, trueValue):
@@ -359,8 +439,11 @@ class NPCRandomBot():
         if lastBid>self.mean*3/4:
             pr=2/50
         if random.random() < pr:
-            self.engine.makeBid(math.floor(
-                lastBid+(self.minp*(1+2*random.random()))))
+            if not self.ph2:
+                self.engine.makeBid(math.floor(
+                    lastBid+(self.minp*(1+2*random.random()))))
+            else:
+                self.engine.makeBid(lastBid + int((1+7 * linterp(NPCnormalY2,NPCnormalX, random.random())) * self.minp))
 
     def onAuctionEnd(self):
         pass
