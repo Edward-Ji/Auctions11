@@ -10,9 +10,6 @@ class CompetitorInstance:
         self.NPC_MID_STAGE = 0b01
         self.NPC_HGH_STAGE = 0b10
         
-        # the prime number for team bot verification
-        self.TEAM_PRIME = 13
-        
         # npc bot bid chance each stage
         self.NPC_BID_PROB = {
             self.NPC_LOW_STAGE: 0.64,
@@ -84,7 +81,7 @@ class CompetitorInstance:
         
         for i, history in enumerate(self.bid_history):
             if len(history) == sum(self.round_counts[i]) and \
-                    all(map(lambda x: x % self.TEAM_PRIME == 0, history)):
+                    all(map(lambda x: x % self.team_prime == 0, history)):
                 self.team_bots.add(i)
         if len(self.team_bots) != 3:
             self.team_bots.clear()
@@ -97,11 +94,11 @@ class CompetitorInstance:
 
         for i in range(self.params["numPlayers"]):
             if self.params["phase"] == self.PHASE_1:
-                if any(map(lambda x: x > self.max_bid_inc, self.inc_history[i])):
+                if any(map(lambda bid: bid > self.max_bid_inc, self.inc_history[i])):
                     self.enemy_bots.add(i)
                     continue
             else:
-                if any(map(lambda x: x > 232, self.inc_history[i])):
+                if any(map(lambda bid: bid > 232, self.inc_history[i])):
                     self.enemy_bots.add(i)
                     continue
                 
@@ -112,25 +109,25 @@ class CompetitorInstance:
                     continue
                 x = self.bid_counts[i][stage] / self.round_counts[i][stage]
                 sd = self.engine.math.sqrt(prob * (1 - prob) / self.round_counts[i][stage])
-                test_stats.append(((x - prob) / sd, 1 / sd))
+                test_stats.append(((x - prob) / sd, 1))
             # preform additional testing on bidding increment in phase 2 games
-            if self.params["phase"] == "phase_2" and sum(self.bid_counts[i]) != 0:
+            if self.params["phase"] == self.PHASE_2 and sum(self.bid_counts[i]) != 0:
                 x = sum(self.inc_history[i]) / sum(self.bid_counts[i]) / self.params["minimumBid"]
-                sd = 7  # / self.engine.math.sqrt(sum(self.bid_counts[i]))
-                test_stats.append((x / sd, 1 / sd))
+                sd = 7 / self.engine.math.sqrt(sum(self.bid_counts[i]))
+                test_stats.append((x / sd, 1))
             # merge z-scores using weighted method
-            final_test_stat = sum(map(lambda x: x[0] * x[1], test_stats)) / \
-                              self.engine.math.sqrt(sum(map(lambda x: x[1] ** 2, test_stats)))
+            final_test_stat = sum(map(lambda ts: ts[0] * ts[1], test_stats)) / \
+                              self.engine.math.sqrt(sum(map(lambda ts: ts[1] ** 2, test_stats)))
             # obtain p-value with normal distribution probability function
             p_value = 2 * self.norm_prob(-abs(final_test_stat))
             if self.params["phase"] == "phase_1":
-                if p_value < 5e-5:
+                if p_value < 5e-3:
                     self.enemy_bots.add(i)
             else:
                 if p_value < 7.5e-5:
                     self.enemy_bots.add(i)
         
-        self.enemy_bots -= self.team_bots
+        # self.enemy_bots -= self.team_bots
     
     def find_team_unique(self):
         # requires team bots found
@@ -171,7 +168,7 @@ class CompetitorInstance:
             
         # otherwise guess enemy unique bots
         elif self.real_true_value:
-            threshold = 58 if self.params["phase"] == self.PHASE_1 else 8
+            threshold = 50 if self.params["phase"] == self.PHASE_1 else 0
             last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
             stops = [abs(self.real_true_value - bid - threshold) for bid in last_bids]
             ordered = sorted(self.enemy_bots, key=lambda i: stops[i])
@@ -230,7 +227,7 @@ class CompetitorInstance:
         
         index = (self.index + 1) % self.params["numPlayers"]
         bid_count = 0
-        while index not in self.team_bots:
+        while index not in self.team_bots - self.unique_bots:
             bid_count += self.round_history[index]
             index = (index + 1) % self.params["numPlayers"]
         return bid_count == sum(self.round_history)
@@ -255,8 +252,8 @@ class CompetitorInstance:
             return
         
         team_bots = sorted(self.team_bots)
-        self.engine.swapTo(self.params["bidOrder"][self.auction_no] +
-                           team_bots.index(self.index))
+        self.engine.swapTo((self.params["bidOrder"][self.auction_no + 1] + team_bots.index(self.index) + 1) %
+                           self.params["numPlayers"])
     
     def onGameStart(self, engine, params):
         self.engine = engine
@@ -264,9 +261,13 @@ class CompetitorInstance:
         
         self.auction_no = 0
 
+        # the prime number for team bot verification
+        self.team_prime = 13 if self.params["phase"] == self.PHASE_1 else 61
+        
         # the maximum information that can be shared under npc bid limit
         self.max_bid_inc = 15 if self.params["phase"] == self.PHASE_1 else 63
         self.code_base = self.max_bid_inc - 1
+        
         # the maximum number of rounds needed to share complete information
         math = self.engine.math
         self.max_code_size = math.ceil(math.log(2 * self.params["stddevTrueValue"]) / math.log(self.code_base))
@@ -318,22 +319,24 @@ class CompetitorInstance:
         self.register_turn(self.index)
         
         least_bid = self.last_bid + self.params["minimumBid"]
+        below_npc = self.bid_counts[self.index][self.stage] < \
+                    self.round_counts[self.index][self.stage] * self.NPC_BID_PROB[self.stage]
         
         # stage 1 : team bot verification
         if not self.team_bots:
-            if least_bid % self.TEAM_PRIME:
-                inc = self.TEAM_PRIME - least_bid % self.TEAM_PRIME
+            if least_bid % self.team_prime:
+                inc = self.team_prime - least_bid % self.team_prime
             else:
                 inc = 0
-            self.bid_by_inc(inc, check=False)
-        
+            self.bid_by_inc(inc)
+            
         # stage 2: share true values and compare
         elif self.pending_bids:
-            self.bid_by_inc(self.pending_bids.pop(0), check=False)
-            
+            if below_npc or self.pending_bids == self.true_value_code:
+                self.bid_by_inc(self.pending_bids.pop(0))
+        
         # stage 3: imitate npc bidding behaviour
-        elif self.bid_counts[self.index][self.stage] < \
-                self.round_counts[self.index][self.stage] * self.NPC_BID_PROB[self.stage]:
+        elif below_npc:
             if self.params["phase"] == self.PHASE_1:
                 self.bid_by_inc(self.engine.random.randint(0, self.max_bid_inc))
             else:
@@ -359,7 +362,7 @@ class CompetitorInstance:
         self.engine.print(f"Bot {self.index} report {team_bots, enemy_bots, unique_bots}")
         
         # request swap
-        if self.params["phase"] == self.PHASE_2:
+        if self.params["phase"] == self.PHASE_2 and self.auction_no != 4:
             self.request_swap()
         
         self.auction_no += 1

@@ -14,7 +14,7 @@ class CompetitorInstance():
 
     def onMyTurn(self,lastBid):
         if (lastBid<self.gameParameters["meanTrueValue"]):
-            self.engine.makeBid(lastBid+11)
+            self.engine.makeBid(lastBid+100)
         pass
 
     def onAuctionEnd(self):

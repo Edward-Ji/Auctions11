@@ -43,6 +43,8 @@ class CompetitorInstance:
         
         self.round_counts = {"low": 0, "mid": 0, "high": 0}
         
+        self.bids_made = 0
+        
     def onBidMade(self, whoMadeBid, howMuch):
         # whoMadeBid is the index of the player that made the bid
         # howMuch is the amount that the bid was
@@ -58,6 +60,8 @@ class CompetitorInstance:
         # save latest bid information
         self.last_bid = howMuch
         self.last_bid_index = whoMadeBid
+        
+        self.bids_made += 1
 
     def onMyTurn(self, lastBid):
         if self.true_value == -1:
@@ -67,8 +71,8 @@ class CompetitorInstance:
             
         least_bid = lastBid + self.gameParameters["minimumBid"]
         
-        if least_bid < true_value:
-            speed = .6
+        if self.bids_made > self.engine.random.randint(75, 125):
+            speed = 1
             self.engine.makeBid(int(true_value * speed + least_bid * (1-speed)))
             self.last_bid = least_bid
         elif least_bid < true_value:
