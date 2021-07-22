@@ -327,6 +327,8 @@ class GameEngine():
                 self.internalPrint("minlog","!ml",f":o:{','.join(map(lambda i: str(i), reportOwnTeam))}")
             except ValueError:
                 self.internalPrint("error",self.currentPrintingPlayer,f"Bad report of ownTeam! Reported bot {tm} was not a positive integer.")
+        print("team report score", protoReportScore)
+        prev_score = protoReportScore
         # check reportNPC
         if type(reportNNPC) != list:
             self.internalPrint("error",self.currentPrintingPlayer,f"Bad report! competitor list was not a <class list>.")
@@ -351,6 +353,8 @@ class GameEngine():
                 self.internalPrint("minlog","!ml",f":n:{','.join(map(lambda i: str(i), reportNNPC))}")
             except ValueError:
                 self.internalPrint("error",self.currentPrintingPlayer,f"Bad report of NPC bots! Reported bot {tm} was not a positive integer.")
+        print("enemy report score", protoReportScore - prev_score)
+        prev_score = protoReportScore
         # check reportKnown
         if type(reportKnown) != list:
             self.internalPrint("error",self.currentPrintingPlayer,f"Bad report! Known true list was not a <class list>.")
@@ -378,6 +382,8 @@ class GameEngine():
         if reportingDone and self.teams[self.currentPrintingPlayer]["protoReportScore"]<protoReportScore:
             self.teams[self.currentPrintingPlayer]["protoReportScore"]=protoReportScore
             self.teams[self.currentPrintingPlayer]["whoReportedBest"]=self.currentBidPlayer
+        print("known report score", protoReportScore - prev_score)
+        print("total report score", protoReportScore)
 
     def swapTo(self, newIndex):
         if type(newIndex)!=int:
