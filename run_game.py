@@ -6,7 +6,7 @@ import importlib
 botsToRun = {
     "christie.fresh_start": 3,
     "christie.cooperate_new": 3,
-    "examples.oneGreater": 3,
+    "examples.randomBidder": 3,
     "NPC": 3
 }
 

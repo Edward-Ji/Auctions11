@@ -118,11 +118,13 @@ class CompetitorInstance:
                 sd = 7 / self.engine.math.sqrt(sum(self.bid_counts[i]))
                 test_stats.append((x / sd, 1 / sd))
             # merge z-scores using weighted method
+            if not test_stats:
+                continue
             final_test_stat = sum(map(lambda ts: ts[0] * ts[1], test_stats)) / \
                 self.engine.math.sqrt(sum(map(lambda ts: ts[1] ** 2, test_stats)))
             # obtain p-value with normal distribution probability function
             p_value = 2 * self.norm_prob(-abs(final_test_stat))
-            if p_value < 9e-3:
+            if p_value < 8.5e-3:
                 self.enemy_bots.add(i)
         
         self.enemy_bots -= self.team_bots
@@ -174,7 +176,7 @@ class CompetitorInstance:
             team_unique_bot, = self.team_bots & self.unique_bots
             team_other_bot, _ = sorted(self.team_bots - self.unique_bots)
             if self.index == team_unique_bot:
-                self.unique_bots |= set(ordered[:2])
+                self.unique_bots |= set(ordered[1:3])
             elif self.index == team_other_bot:
                 self.unique_bots |= set(ordered[:1])
         
@@ -195,7 +197,7 @@ class CompetitorInstance:
         self.last_turn_index = self.start_index
         
         self.round_no = 0
-        self.round_history = [True for _ in range(self.params["numPlayers"])]
+        self.round_history = [False for _ in range(self.params["numPlayers"])]
     
     def hard_reset(self):
         # initialise classification of team bots and enemy bots
@@ -252,9 +254,10 @@ class CompetitorInstance:
         if not self.team_bots:
             return
         
-        team_bots = sorted(self.team_bots)
-        self.engine.swapTo((self.params["bidOrder"][self.auction_no + 1] + team_bots.index(self.index) + 1) %
-                           self.params["numPlayers"])
+        # team_bots = sorted(self.team_bots)
+        # self.engine.swapTo((self.params["bidOrder"][self.auction_no + 1] + team_bots.index(self.index) + 1) %
+        #                    self.params["numPlayers"])
+        self.engine.swapTo(self.engine.random.randint(0, self.params["numPlayers"] - 1))
     
     def onGameStart(self, engine, params):
         self.engine = engine
