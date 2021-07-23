@@ -111,12 +111,12 @@ class CompetitorInstance:
                     continue
                 x = self.bid_counts[i][stage] / self.round_counts[i][stage]
                 sd = self.engine.math.sqrt(prob * (1 - prob) / self.round_counts[i][stage])
-                test_stats.append(((x - prob) / sd, 1))
+                test_stats.append(((x - prob) / sd, 1 / sd))
             # preform additional testing on bidding increment in phase 2 games
             if self.params["phase"] == self.PHASE_2 and sum(self.bid_counts[i]) != 0:
                 x = sum(self.inc_history[i]) / sum(self.bid_counts[i]) / self.params["minimumBid"]
                 sd = 7 / self.engine.math.sqrt(sum(self.bid_counts[i]))
-                test_stats.append((x / sd, 1))
+                test_stats.append((x / sd, 1 / sd))
             # merge z-scores using weighted method
             final_test_stat = sum(map(lambda ts: ts[0] * ts[1], test_stats)) / \
                 self.engine.math.sqrt(sum(map(lambda ts: ts[1] ** 2, test_stats)))
@@ -165,7 +165,7 @@ class CompetitorInstance:
                 self.unique_bots.add(team_bots[team_bots.index(self.index) - 1])
         
         # otherwise guess enemy unique bots
-        if self.real_true_value:
+        elif self.real_true_value:
             threshold = 50 if self.params["phase"] == self.PHASE_1 else 0
             last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
             stops = [abs(self.real_true_value - bid - threshold) for bid in last_bids]
