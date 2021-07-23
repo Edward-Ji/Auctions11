@@ -122,12 +122,8 @@ class CompetitorInstance:
                 self.engine.math.sqrt(sum(map(lambda ts: ts[1] ** 2, test_stats)))
             # obtain p-value with normal distribution probability function
             p_value = 2 * self.norm_prob(-abs(final_test_stat))
-            if self.params["phase"] == "phase_1":
-                if p_value < 5e-3:
-                    self.enemy_bots.add(i)
-            else:
-                if p_value < 7.5e-5:
-                    self.enemy_bots.add(i)
+            if p_value < 9e-3:
+                self.enemy_bots.add(i)
         
         self.enemy_bots -= self.team_bots
     
@@ -169,7 +165,7 @@ class CompetitorInstance:
                 self.unique_bots.add(team_bots[team_bots.index(self.index) - 1])
         
         # otherwise guess enemy unique bots
-        elif self.real_true_value:
+        if self.real_true_value:
             threshold = 50 if self.params["phase"] == self.PHASE_1 else 0
             last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
             stops = [abs(self.real_true_value - bid - threshold) for bid in last_bids]
@@ -181,6 +177,10 @@ class CompetitorInstance:
                 self.unique_bots |= set(ordered[:2])
             elif self.index == team_other_bot:
                 self.unique_bots |= set(ordered[:1])
+        
+        # do not self report
+        if self.index in self.unique_bots:
+            self.unique_bots.remove(self.index)
     
     def reset(self):
         # initialise classification of unique bots
@@ -242,9 +242,7 @@ class CompetitorInstance:
         true_value = self.real_true_value
         if true_value == 0:
             true_value = self.params["meanTrueValue"] - self.params["stddevTrueValue"]
-        
-        true_value += self.params["minimumBid"] / 2
-        
+            
         if bid <= true_value or not check:
             self.engine.makeBid(least_bid + inc)
         elif least_bid <= true_value:
@@ -322,7 +320,7 @@ class CompetitorInstance:
         self.register_turn(self.index)
         
         least_bid = self.last_bid + self.params["minimumBid"]
-        below_npc = self.bid_counts[self.index][self.stage] < \
+        below_npc_rate = self.bid_counts[self.index][self.stage] < \
             self.round_counts[self.index][self.stage] * self.NPC_BID_PROB[self.stage]
         
         # stage 1 : team bot verification
@@ -332,18 +330,17 @@ class CompetitorInstance:
         
         # stage 2: share true values and compare
         elif self.pending_bids:
-            if below_npc or self.pending_bids == self.true_value_code:
-                self.bid_by_inc(self.pending_bids.pop(0))
+            self.bid_by_inc(self.pending_bids.pop(0))
         
         # stage 3: imitate npc bidding behaviour
-        elif below_npc:
+        elif below_npc_rate:
             if self.params["phase"] == self.PHASE_1:
                 self.bid_by_inc(self.engine.random.randint(0, self.max_bid_inc))
             else:
                 self.bid_by_inc(abs(self.engine.random.gauss(0, self.max_bid_inc)))
         
         # stage 4: bid if someone else is taking
-        elif self.must_bid:
+        elif self.must_bid and self.index not in self.unique_bots:
             self.bid_by_inc(0)
     
     def onAuctionEnd(self):

@@ -71,8 +71,8 @@ class CompetitorInstance:
             
         least_bid = lastBid + self.gameParameters["minimumBid"]
         
-        if self.bids_made > self.engine.random.randint(75, 125):
-            speed = 1
+        if least_bid < true_value:
+            speed = .5
             self.engine.makeBid(int(true_value * speed + least_bid * (1-speed)))
             self.last_bid = least_bid
         elif least_bid < true_value:
