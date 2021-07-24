@@ -115,6 +115,7 @@ class GameEngine():
                 fn(*args, **kwargs)
             except Exception as e:
                 self.internalPrint("error",team,f"Team {team}'s execution of {fname} raised an error:{type(e)} {e}")
+                raise e
         it = InterruptableThread(tryfn, *args, **kwargs)
         it.start()
         it.join(t)

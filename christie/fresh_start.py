@@ -62,22 +62,6 @@ class CompetitorInstance:
             return self.NPC_LOW_STAGE
 
     @property
-    def given_true_value(self):
-        if self.params["phase"] == self.PHASE_1:
-            if self.true_value:
-                return True
-            else:
-                return False
-        else:
-            if self.team_bots & self.unique_bots:
-                if self.index not in self.unique_bots:
-                    return True
-                else:
-                    return False
-            else:
-                return None
-
-    @property
     def raw_true_value(self):
         if self.params["phase"] == self.PHASE_1:
             if self.true_value:
@@ -95,10 +79,19 @@ class CompetitorInstance:
     
     @property
     def real_true_value(self):
-        if self.given_true_value:
-            return self.raw_true_value - self.params["knowledgePenalty"]
+        if self.params["phase"] == self.PHASE_1:
+            if self.true_value:
+                return self.true_value - self.params["knowledgePenalty"]
+            else:
+                return self.shared_true_value
         else:
-            return self.raw_true_value
+            if self.team_bots & self.unique_bots:
+                if self.index not in self.unique_bots:
+                    return self.true_value - self.params["knowledgePenalty"]
+                else:
+                    return self.shared_true_value
+            else:
+                return 0
     
     def find_team_bots(self):
         if self.team_bots or self.round_no < 1:
@@ -166,7 +159,7 @@ class CompetitorInstance:
         team_bots = sorted(self.team_bots)
         if final:
             codes[team_bots.index(self.index)] = self.true_value_code
-        
+            
         if not self.team_bots & self.unique_bots:
             for c1, c2, c3 in zip(*codes):
                 if c2 == c3 != c1:
@@ -175,8 +168,10 @@ class CompetitorInstance:
                     self.unique_bots.add(team_bots[1])
                 elif c1 == c2 != c3:
                     self.unique_bots.add(team_bots[2])
-                    
-        if self.given_true_value is False:
+
+        if self.params["phase"] == self.PHASE_2 and \
+                self.team_bots & self.unique_bots and \
+                self.index not in self.unique_bots:
             self.pending_bids.clear()
         
         # find shared true value upon team unique bot found
@@ -205,14 +200,14 @@ class CompetitorInstance:
                 stops = [abs(self.raw_true_value - bid - threshold) for bid in last_bids]
                 ordered = sorted(self.enemy_bots, key=lambda i: stops[i])
             else:
-                ordered = self.enemy_bots.copy()
+                ordered = list(self.enemy_bots)
                 self.engine.random.shuffle(ordered)
             
             team_unique_bot, = self.team_bots & self.unique_bots
             team_other_bot, _ = sorted(self.team_bots - self.unique_bots)
             if self.index == team_unique_bot:
                 self.unique_bots.remove(self.index)  # do not self report
-                self.unique_bots |= set(ordered[1:3])
+                self.unique_bots |= set(ordered[2:5])
             elif self.index == team_other_bot:
                 self.unique_bots |= set(ordered[:2])
     
