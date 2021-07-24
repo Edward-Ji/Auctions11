@@ -62,6 +62,22 @@ class CompetitorInstance:
             return self.NPC_LOW_STAGE
 
     @property
+    def given_true_value(self):
+        if self.params["phase"] == self.PHASE_1:
+            if self.true_value:
+                return True
+            else:
+                return False
+        else:
+            if self.team_bots & self.unique_bots:
+                if self.index not in self.unique_bots:
+                    return True
+                else:
+                    return False
+            else:
+                return None
+
+    @property
     def raw_true_value(self):
         if self.params["phase"] == self.PHASE_1:
             if self.true_value:
@@ -79,10 +95,7 @@ class CompetitorInstance:
     
     @property
     def real_true_value(self):
-        if self.params["phase"] == self.PHASE_1 and self.true_value or \
-                self.params["phase"] == self.PHASE_2 and \
-                self.team_bots & self.unique_bots and \
-                self.index not in self.unique_bots:
+        if self.given_true_value:
             return self.raw_true_value - self.params["knowledgePenalty"]
         else:
             return self.raw_true_value
@@ -136,11 +149,12 @@ class CompetitorInstance:
             # obtain p-value with normal distribution probability function
             p_values[i] = 2 * self.norm_prob(-abs(final_test_stat))
 
+        threshold = 9e-3 if self.params["phase"] == self.PHASE_1 else 5e-3
         enemy_bots = set(range(self.params["numPlayers"])) - self.team_bots
-        enemy_bots = filter(lambda i: p_values[i] < 8.5e-3, enemy_bots)
+        enemy_bots = filter(lambda i: p_values[i] < threshold, enemy_bots)
         self.enemy_bots = set(sorted(enemy_bots, key=lambda i: p_values[i])[:6])
         
-        # self.enemy_bots -= self.team_bots
+        self.enemy_bots -= self.team_bots
     
     def find_team_unique(self):
         # requires team bots found
@@ -160,6 +174,9 @@ class CompetitorInstance:
                     self.unique_bots.add(team_bots[1])
                 elif c1 == c2 != c3:
                     self.unique_bots.add(team_bots[2])
+                    
+        if self.given_true_value is False:
+            self.pending_bids.clear()
         
         # find shared true value upon team unique bot found
         if self.team_bots & self.unique_bots and not self.real_true_value:
@@ -181,7 +198,7 @@ class CompetitorInstance:
         
         # otherwise guess enemy unique bots
         elif self.real_true_value:
-            threshold = 50 if self.params["phase"] == self.PHASE_1 else 0
+            threshold = 58 if self.params["phase"] == self.PHASE_1 else 0
             last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
             stops = [abs(self.raw_true_value - bid - threshold) for bid in last_bids]
             ordered = sorted(self.enemy_bots, key=lambda i: stops[i])
