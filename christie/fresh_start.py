@@ -127,7 +127,7 @@ class CompetitorInstance:
             p_values[i] = 2 * self.norm_prob(-abs(final_test_stat))
 
         enemy_bots = set(range(self.params["numPlayers"])) - self.team_bots
-        enemy_bots = sorted(enemy_bots, key=lambda i: p_values[i] < 8.5e-3)
+        enemy_bots = filter(lambda i: p_values[i] < 8.5e-3, enemy_bots)
         self.enemy_bots = set(sorted(enemy_bots, key=lambda i: p_values[i])[:6])
         
         self.enemy_bots -= self.team_bots
