@@ -94,14 +94,15 @@ class CompetitorInstance:
     def find_enemy_bots(self):
         self.enemy_bots.clear()
         
+        p_values = [1 for _ in range(self.params["numPlayers"])]
         for i in range(self.params["numPlayers"]):
             if self.params["phase"] == self.PHASE_1:
                 if any(map(lambda bid: bid > self.max_bid_inc, self.inc_history[i])):
-                    self.enemy_bots.add(i)
+                    p_values[i] = 0
                     continue
             else:
                 if any(map(lambda bid: bid > 232, self.inc_history[i])):
-                    self.enemy_bots.add(i)
+                    p_values[i] = 0
                     continue
             
             # perform hypothesis testing on bidding probability
@@ -123,9 +124,11 @@ class CompetitorInstance:
             final_test_stat = sum(map(lambda ts: ts[0] * ts[1], test_stats)) / \
                 self.engine.math.sqrt(sum(map(lambda ts: ts[1] ** 2, test_stats)))
             # obtain p-value with normal distribution probability function
-            p_value = 2 * self.norm_prob(-abs(final_test_stat))
-            if p_value < 8.5e-3:
-                self.enemy_bots.add(i)
+            p_values[i] = 2 * self.norm_prob(-abs(final_test_stat))
+
+        enemy_bots = set(range(self.params["numPlayers"])) - self.team_bots
+        enemy_bots = sorted(enemy_bots, key=lambda i: p_values[i] < 8.5e-3)
+        self.enemy_bots = set(sorted(enemy_bots, key=lambda i: p_values[i])[:6])
         
         self.enemy_bots -= self.team_bots
     
@@ -174,15 +177,12 @@ class CompetitorInstance:
             ordered = sorted(self.enemy_bots, key=lambda i: stops[i])
             
             team_unique_bot, = self.team_bots & self.unique_bots
-            team_other_bot, _ = sorted(self.team_bots - self.unique_bots)
+            team_other_bot, team_another_bot = sorted(self.team_bots - self.unique_bots)
             if self.index == team_unique_bot:
-                self.unique_bots |= set(ordered[1:3])
+                self.unique_bots.remove(self.index)  # do not self report
+                self.unique_bots |= set(ordered[1:2])
             elif self.index == team_other_bot:
                 self.unique_bots |= set(ordered[:1])
-        
-        # do not self report
-        if self.index in self.unique_bots:
-            self.unique_bots.remove(self.index)
     
     def reset(self):
         # initialise classification of unique bots
@@ -222,7 +222,6 @@ class CompetitorInstance:
             self.round_history[skip_index] = False
             if skip_index == self.start_index:
                 self.round_no += 1
-                self.engine.print(f"Bot {self.index} on round {self.round_no}.")
         self.last_turn_index = index
     
     @property
@@ -254,10 +253,9 @@ class CompetitorInstance:
         if not self.team_bots:
             return
         
-        # team_bots = sorted(self.team_bots)
-        # self.engine.swapTo((self.params["bidOrder"][self.auction_no + 1] + team_bots.index(self.index) + 1) %
-        #                    self.params["numPlayers"])
-        self.engine.swapTo(self.engine.random.randint(0, self.params["numPlayers"] - 1))
+        team_bots = sorted(self.team_bots)
+        self.engine.swapTo((self.params["bidOrder"][self.auction_no + 1] + team_bots.index(self.index) + 1) %
+                           self.params["numPlayers"])
     
     def onGameStart(self, engine, params):
         self.engine = engine

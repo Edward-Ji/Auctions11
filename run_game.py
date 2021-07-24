@@ -6,14 +6,14 @@ import importlib
 botsToRun = {
     "christie.fresh_start": 3,
     "christie.cooperate_new": 3,
-    "examples.randomBidder": 3,
+    "examples.true_value": 3,
     "NPC": 3
 }
 
 engine = GameEngine()
 
 engine.gameParameters["auctionsCount"] = 5
-engine.gameParameters["phase"] = "phase_2"
+engine.gameParameters["phase"] = "phase_1"
 
 # Warning: Timeouts are not enforced locally - so if you have an infinite loop, beware!
 for b in botsToRun:
