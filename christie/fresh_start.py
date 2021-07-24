@@ -60,22 +60,32 @@ class CompetitorInstance:
             return self.NPC_MID_STAGE
         else:
             return self.NPC_LOW_STAGE
-    
+
     @property
-    def real_true_value(self):
+    def raw_true_value(self):
         if self.params["phase"] == self.PHASE_1:
             if self.true_value:
-                return self.true_value - self.params["knowledgePenalty"]
+                return self.true_value
             else:
                 return self.shared_true_value
         else:
             if self.team_bots & self.unique_bots:
                 if self.index not in self.unique_bots:
-                    return self.true_value - self.params["knowledgePenalty"]
+                    return self.true_value
                 else:
                     return self.shared_true_value
             else:
                 return 0
+    
+    @property
+    def real_true_value(self):
+        if self.params["phase"] == self.PHASE_1 and self.true_value or \
+                self.params["phase"] == self.PHASE_2 and \
+                self.team_bots & self.unique_bots and \
+                self.index not in self.unique_bots:
+            return self.raw_true_value - self.params["knowledgePenalty"]
+        else:
+            return self.raw_true_value
     
     def find_team_bots(self):
         if self.team_bots or self.round_no < 1:
@@ -130,7 +140,7 @@ class CompetitorInstance:
         enemy_bots = filter(lambda i: p_values[i] < 8.5e-3, enemy_bots)
         self.enemy_bots = set(sorted(enemy_bots, key=lambda i: p_values[i])[:6])
         
-        self.enemy_bots -= self.team_bots
+        # self.enemy_bots -= self.team_bots
     
     def find_team_unique(self):
         # requires team bots found
@@ -173,18 +183,18 @@ class CompetitorInstance:
         elif self.real_true_value:
             threshold = 50 if self.params["phase"] == self.PHASE_1 else 0
             last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
-            stops = [abs(self.real_true_value - bid - threshold) for bid in last_bids]
+            stops = [abs(self.raw_true_value - bid - threshold) for bid in last_bids]
             ordered = sorted(self.enemy_bots, key=lambda i: stops[i])
             
             team_unique_bot, = self.team_bots & self.unique_bots
             team_other_bot, team_another_bot = sorted(self.team_bots - self.unique_bots)
             if self.index == team_unique_bot:
                 self.unique_bots.remove(self.index)  # do not self report
-                self.unique_bots |= set(ordered[2:4])
+                self.unique_bots |= set(ordered[1:3])
             elif self.index == team_other_bot:
                 self.unique_bots |= set(ordered[:2])
             elif self.index == team_another_bot:
-                self.unique_bots |= set(ordered[:1])
+                self.unique_bots |= set(ordered[:0])
     
     def reset(self):
         # initialise classification of unique bots
