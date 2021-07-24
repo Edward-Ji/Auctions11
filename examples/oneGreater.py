@@ -18,4 +18,5 @@ class CompetitorInstance():
         pass
 
     def onAuctionEnd(self):
-        pass
+        if self.gameParameters["phase"] == "phase_2":
+            self.engine.swapTo(self.engine.random.randint(0, self.gameParameters["numPlayers"] - 1))

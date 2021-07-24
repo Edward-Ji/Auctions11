@@ -156,7 +156,7 @@ class CompetitorInstance:
         
         self.enemy_bots -= self.team_bots
     
-    def find_team_unique(self):
+    def find_team_unique(self, final=False):
         # requires team bots found
         if not self.team_bots:
             return
@@ -164,7 +164,8 @@ class CompetitorInstance:
         # find team unique bot if not found
         codes = self.codes
         team_bots = sorted(self.team_bots)
-        codes[team_bots.index(self.index)] = self.true_value_code
+        if final:
+            codes[team_bots.index(self.index)] = self.true_value_code
         
         if not self.team_bots & self.unique_bots:
             for c1, c2, c3 in zip(*codes):
@@ -197,21 +198,23 @@ class CompetitorInstance:
                 self.unique_bots.add(team_bots[team_bots.index(self.index) - 1])
         
         # otherwise guess enemy unique bots
-        elif self.real_true_value:
-            threshold = 58 if self.params["phase"] == self.PHASE_1 else 0
-            last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
-            stops = [abs(self.raw_true_value - bid - threshold) for bid in last_bids]
-            ordered = sorted(self.enemy_bots, key=lambda i: stops[i])
+        else:
+            if self.real_true_value:
+                threshold = 58 if self.params["phase"] == self.PHASE_1 else 0
+                last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
+                stops = [abs(self.raw_true_value - bid - threshold) for bid in last_bids]
+                ordered = sorted(self.enemy_bots, key=lambda i: stops[i])
+            else:
+                ordered = self.enemy_bots.copy()
+                self.engine.random.shuffle(ordered)
             
             team_unique_bot, = self.team_bots & self.unique_bots
-            team_other_bot, team_another_bot = sorted(self.team_bots - self.unique_bots)
+            team_other_bot, _ = sorted(self.team_bots - self.unique_bots)
             if self.index == team_unique_bot:
                 self.unique_bots.remove(self.index)  # do not self report
                 self.unique_bots |= set(ordered[1:3])
             elif self.index == team_other_bot:
                 self.unique_bots |= set(ordered[:2])
-            elif self.index == team_another_bot:
-                self.unique_bots |= set(ordered[:0])
     
     def reset(self):
         # initialise classification of unique bots
@@ -378,6 +381,7 @@ class CompetitorInstance:
         self.engine.print(f"Bot {self.index} real true value {self.real_true_value}")
         
         self.find_enemy_bots()
+        self.find_team_unique(final=True)
         self.find_unique_bots()
         
         # generate and report bot classifications
