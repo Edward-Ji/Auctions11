@@ -202,6 +202,9 @@ class CompetitorInstance:
             else:
                 ordered = list(self.enemy_bots)
                 self.engine.random.shuffle(ordered)
+            if len(ordered) < 5:
+                candidates = set(range(self.params["numPlayers"])) - self.team_bots - self.enemy_bots
+                ordered += sorted(candidates, key=lambda i: stops[i])
             
             team_unique_bot, = self.team_bots & self.unique_bots
             team_other_bot, _ = sorted(self.team_bots - self.unique_bots)
