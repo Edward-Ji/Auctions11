@@ -194,17 +194,17 @@ class CompetitorInstance:
         
         # otherwise guess enemy unique bots
         else:
-            if self.real_true_value:
+            if self.raw_true_value:
                 threshold = 58 if self.params["phase"] == self.PHASE_1 else 0
                 last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
                 stops = [abs(self.raw_true_value - bid - threshold) for bid in last_bids]
                 ordered = sorted(self.enemy_bots, key=lambda i: stops[i])
+                if len(ordered) < 5:
+                    candidates = set(range(self.params["numPlayers"])) - self.team_bots - self.enemy_bots
+                    ordered += sorted(candidates, key=lambda i: stops[i])
             else:
                 ordered = list(self.enemy_bots)
                 self.engine.random.shuffle(ordered)
-            if len(ordered) < 5:
-                candidates = set(range(self.params["numPlayers"])) - self.team_bots - self.enemy_bots
-                ordered += sorted(candidates, key=lambda i: stops[i])
             
             team_unique_bot, = self.team_bots & self.unique_bots
             team_other_bot, _ = sorted(self.team_bots - self.unique_bots)
@@ -378,6 +378,7 @@ class CompetitorInstance:
         self.engine.print(f"Bot {self.index} given true value {self.true_value}")
         self.engine.print(f"Bot {self.index} real true value {self.real_true_value}")
         
+        self.find_team_bots()
         self.find_enemy_bots()
         self.find_team_unique(final=True)
         self.find_unique_bots()

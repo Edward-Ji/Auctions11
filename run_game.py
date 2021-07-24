@@ -13,7 +13,7 @@ botsToRun = {
 engine = GameEngine()
 
 engine.gameParameters["auctionsCount"] = 5
-engine.gameParameters["phase"] = "phase_1"
+engine.gameParameters["phase"] = "phase_2"
 
 # Warning: Timeouts are not enforced locally - so if you have an infinite loop, beware!
 for b in botsToRun:
