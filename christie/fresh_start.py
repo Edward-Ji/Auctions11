@@ -180,8 +180,10 @@ class CompetitorInstance:
             team_other_bot, team_another_bot = sorted(self.team_bots - self.unique_bots)
             if self.index == team_unique_bot:
                 self.unique_bots.remove(self.index)  # do not self report
-                self.unique_bots |= set(ordered[1:2])
+                self.unique_bots |= set(ordered[2:4])
             elif self.index == team_other_bot:
+                self.unique_bots |= set(ordered[:2])
+            elif self.index == team_another_bot:
                 self.unique_bots |= set(ordered[:1])
     
     def reset(self):
