@@ -104,7 +104,6 @@ class CompetitorInstance:
         if len(self.team_bots) != 3:
             self.team_bots.clear()
         else:
-            self.bid_history = [[] for _ in range(self.params["numPlayers"])]
             self.engine.print(f"Bot {self.index} found team bots {self.team_bots}.")
     
     def find_enemy_bots(self):
@@ -171,7 +170,7 @@ class CompetitorInstance:
 
         if self.params["phase"] == self.PHASE_2 and \
                 self.team_bots & self.unique_bots and \
-                self.index not in self.unique_bots:
+                self.index in self.unique_bots:
             self.pending_bids.clear()
         
         # find shared true value upon team unique bot found
