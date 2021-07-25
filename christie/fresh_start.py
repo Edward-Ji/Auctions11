@@ -195,16 +195,17 @@ class CompetitorInstance:
         else:
             if self.raw_true_value:
                 last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
-                all_bots = set(range(self.params["numPlayers"]))
+                diffs = [self.raw_true_value - bid for bid in last_bids]
                 if self.params["phase"] == self.PHASE_1:
-                    diffs = [self.raw_true_value - bid for bid in last_bids]
                     ordered = sorted(filter(lambda i: diffs[i] >= 50, self.enemy_bots),
                                      key=lambda i: diffs[i])
                     ordered += sorted(self.enemy_bots, key=lambda i: diffs[i])
                 else:
-                    diffs = [abs(self.raw_true_value - bid) for bid in last_bids]
-                    ordered = sorted(self.enemy_bots, key=lambda i: diffs[i])
+                    ordered = sorted(filter(lambda i: 0 <= diffs[i] < 50, self.enemy_bots),
+                                     key=lambda i: diffs[i])
+                    ordered += sorted(self.enemy_bots, key=lambda i: abs(diffs[i]))
                 if len(ordered) < 5:
+                    all_bots = set(range(self.params["numPlayers"]))
                     ordered += sorted(all_bots - self.team_bots - set(ordered), key=lambda i: diffs[i])
             else:
                 ordered = list(self.enemy_bots)
