@@ -193,9 +193,9 @@ class CompetitorInstance:
         
         # otherwise guess enemy unique bots
         else:
+            last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
+            diffs = [self.raw_true_value - bid for bid in last_bids]
             if self.raw_true_value:
-                last_bids = map(lambda l: l[-1] if l else 0, self.bid_history)
-                diffs = [self.raw_true_value - bid for bid in last_bids]
                 if self.params["phase"] == self.PHASE_1:
                     ordered = sorted(filter(lambda i: diffs[i] >= 50, self.enemy_bots),
                                      key=lambda i: diffs[i])
@@ -204,12 +204,13 @@ class CompetitorInstance:
                     ordered = sorted(filter(lambda i: 0 <= diffs[i] < 50, self.enemy_bots),
                                      key=lambda i: diffs[i])
                     ordered += sorted(self.enemy_bots, key=lambda i: abs(diffs[i]))
-                if len(ordered) < 5:
-                    all_bots = set(range(self.params["numPlayers"]))
-                    ordered += sorted(all_bots - self.team_bots - set(ordered), key=lambda i: diffs[i])
             else:
                 ordered = list(self.enemy_bots)
                 self.engine.random.shuffle(ordered)
+            
+            if len(ordered) < 5:
+                all_bots = set(range(self.params["numPlayers"]))
+                ordered += sorted(all_bots - self.team_bots - set(ordered), key=lambda i: diffs[i])
             
             team_unique_bot, = self.team_bots & self.unique_bots
             team_other_bot, _ = sorted(self.team_bots - self.unique_bots)
