@@ -18,14 +18,29 @@ class CompetitorInstance:
         }
     
     @staticmethod
-    def to_unsign(n):
+    def to_unsign(n: int) -> int:
+        """
+        Converts a signed number to an unsigned one that is proportional to the number's magnitude.
+        :param n: signed number
+        :return: converted unsigned number
+        """
         return 2 * n if n > 0 else -2 * n + 1
     
     @staticmethod
-    def from_unsign(n):
+    def from_unsign(n: int) -> int:
+        """
+        Converts a unsigned number back to the original signed number.
+        :param n: converted unsigned number
+        :return: signed number
+        """
         return (-1) ** (n % 2) * (n // 2)
     
-    def encode(self, tv):
+    def encode(self, tv: int) -> list[int]:
+        """
+        Encode the true value using the unsign method above and convert to base code_base
+        :param tv: true value
+        :return: a sequence of base code_case numbers
+        """
         diff = tv - self.params["meanTrueValue"]
         unsigned = self.to_unsign(diff)
         code = []
@@ -36,11 +51,21 @@ class CompetitorInstance:
             code.append(self.max_bid_inc)
         return code
     
-    def code_complete(self, code):
+    def code_complete(self, code: list[int]) -> bool:
+        """
+        Check if a code sequence is complete for decoding.
+        :param code: a sequence of base code_base numbers
+        :return: if the code is complete
+        """
         return len(code) == self.max_code_size or \
                self.max_bid_inc in code
     
-    def decode(self, code):
+    def decode(self, code: list[int]) -> int:
+        """
+        Decode the sequence of base code_base numbers back to the actual true value
+        :param code: a sequence of base code_base numbers
+        :return: true value
+        """
         unsigned = 0
         if code[-1] == self.max_bid_inc:
             code.pop(-1)
@@ -49,11 +74,21 @@ class CompetitorInstance:
         diff = self.from_unsign(unsigned)
         return self.params["meanTrueValue"] + diff
     
-    def norm_prob(self, x):
+    def norm_prob(self, x: float) -> float:
+        """
+        Return cumulative density function of x.
+        :param x: test statistic (i.e. z-score)
+        :return: CDF(x)
+        """
         q = self.engine.math.erf(x / self.engine.math.sqrt(2.0))
         return (1.0 + q) / 2.0
     
-    def npc_stage(self, last_bid):
+    def npc_stage(self, last_bid: int) -> int:
+        """
+        Return the NPC bid stage code.
+        :param last_bid: the previous bid made
+        :return: the stage bit code
+        """
         if last_bid > self.params["meanTrueValue"] * 3 / 4:
             return self.NPC_HGH_STAGE
         if last_bid > self.params["meanTrueValue"] / 4:
@@ -63,6 +98,10 @@ class CompetitorInstance:
 
     @property
     def raw_true_value(self):
+        """
+        The actual true value. It is 0 when the true value is can't be determined.
+        :return: true value
+        """
         if self.params["phase"] == self.PHASE_1:
             if self.true_value:
                 return self.true_value
@@ -79,6 +118,10 @@ class CompetitorInstance:
     
     @property
     def real_true_value(self):
+        """
+        Returns the actual value of that auction with knowledge penalty. It is 0 when not known.
+        :return: true value with knowledge penalty
+        """
         if self.params["phase"] == self.PHASE_1:
             if self.true_value:
                 return self.true_value - self.params["knowledgePenalty"]
@@ -93,7 +136,7 @@ class CompetitorInstance:
             else:
                 return 0
     
-    def find_team_bots(self):
+    def find_team_bots(self) -> None:
         if self.team_bots or self.round_no < 1:
             return
         
@@ -106,7 +149,7 @@ class CompetitorInstance:
         else:
             self.engine.print(f"Bot {self.index} found team bots {self.team_bots}.")
     
-    def find_enemy_bots(self):
+    def find_enemy_bots(self) -> None:
         self.enemy_bots.clear()
         
         p_values = [1 for _ in range(self.params["numPlayers"])]
@@ -148,7 +191,7 @@ class CompetitorInstance:
         
         self.enemy_bots -= self.team_bots
     
-    def find_team_unique(self, final=False):
+    def find_team_unique(self, final=False) -> None:
         # requires team bots found
         if not self.team_bots:
             return
@@ -184,7 +227,7 @@ class CompetitorInstance:
                 self.shared_true_value = self.decode(true_value_code)
                 self.engine.print(f"Bot {self.index} found shared true value {self.shared_true_value}.")
     
-    def find_unique_bots(self):
+    def find_unique_bots(self) -> None:
         # guarantee team unique bot report even if it's not found
         if not self.team_bots & self.unique_bots:
             if self.team_bots:
@@ -220,7 +263,7 @@ class CompetitorInstance:
             elif self.index == team_other_bot:
                 self.unique_bots |= set(ordered[:2])
     
-    def reset(self):
+    def reset(self) -> None:
         # initialise classification of unique bots
         self.unique_bots: set[int] = set()
         self.codes: list[list[int]] = [[] for _ in range(3)]
@@ -235,7 +278,7 @@ class CompetitorInstance:
         self.round_no = 0
         self.round_history = [False for _ in range(self.params["numPlayers"])]
     
-    def hard_reset(self):
+    def hard_reset(self) -> None:
         # initialise classification of team bots and enemy bots
         self.team_bots: set[int] = set()
         self.enemy_bots: set[int] = set()
@@ -248,7 +291,7 @@ class CompetitorInstance:
         self.inc_history: list[list[int]] = [[] for _ in range(self.params["numPlayers"])]
         self.codes: list[list[int]] = [[] for _ in range(3)]
     
-    def register_turn(self, index):
+    def register_turn(self, index) -> None:
         skip_index = self.last_turn_index
         while skip_index != index:
             skip_index += 1
@@ -261,7 +304,13 @@ class CompetitorInstance:
         self.last_turn_index = index
     
     @property
-    def must_bid(self):
+    def must_bid(self) -> bool:
+        """
+        Returns a bool that indicate if this bot must bid. According to the rules, an auction is won by the last bidder
+        if the number of passes equal to the number of players. This checks if passing this turn could result in that
+        many passes.
+        :return: whether this bot must bid
+        """
         if not self.team_bots:
             return False
         
@@ -272,7 +321,14 @@ class CompetitorInstance:
             index = (index + 1) % self.params["numPlayers"]
         return bid_count == sum(self.round_history)
     
-    def bid_by_inc(self, inc, check=True):
+    def bid_by_inc(self, inc: int, check: bool=True) -> None:
+        """
+        Bid the least bid amount increased by a given number. When check enabled, only bid if the value is less than
+        the true value (including knowledge penalty). If the ture value is unknown use the minimum threshold of true
+        value distribution (mean - 1 * std).
+        :param inc: the amount of increase from the least bid that can be made
+        :param check: whether to check if this bot is going to overbid
+        """
         least_bid = self.last_bid + self.params["minimumBid"]
         bid = least_bid + inc
         
@@ -285,7 +341,10 @@ class CompetitorInstance:
         elif least_bid <= true_value:
             self.engine.makeBid(true_value)
     
-    def request_swap(self):
+    def request_swap(self) -> None:
+        """
+        Request to swap to the first bidding position.
+        """
         if not self.team_bots:
             return
         
@@ -293,7 +352,7 @@ class CompetitorInstance:
         self.engine.swapTo((self.params["bidOrder"][self.auction_no + 1] + team_bots.index(self.index) + 1) %
                            self.params["numPlayers"])
     
-    def onGameStart(self, engine, params):
+    def onGameStart(self, engine, params: dict[str, int]):
         self.engine = engine
         self.params = params
         
@@ -310,7 +369,7 @@ class CompetitorInstance:
         math = self.engine.math
         self.max_code_size = math.ceil(math.log(2 * self.params["stddevTrueValue"]) / math.log(self.code_base))
     
-    def onAuctionStart(self, index, true_value):
+    def onAuctionStart(self, index: int, true_value: int):
         if self.auction_no == 0 or self.params["phase"] == self.PHASE_2:
             # initialise bid history before the first auction
             # information lost in phase 2 games due to swapping
@@ -328,7 +387,7 @@ class CompetitorInstance:
         self.pending_bids = self.true_value_code.copy()
         self.engine.print(f"Bot {self.index} pending bids {self.pending_bids}")
     
-    def onBidMade(self, index, bid):
+    def onBidMade(self, index: int, bid: int):
         self.stage = self.npc_stage(self.last_bid)
         
         self.register_turn(index)
