@@ -99,7 +99,7 @@ class CompetitorInstance:
     @property
     def raw_true_value(self):
         """
-        The actual true value. It is 0 when the true value is can't be determined.
+        The actual true value. It is 0 when the true value can't be determined.
         :return: true value
         """
         if self.params["phase"] == self.PHASE_1:
@@ -119,7 +119,8 @@ class CompetitorInstance:
     @property
     def real_true_value(self):
         """
-        Returns the actual value of that auction with knowledge penalty. It is 0 when not known.
+        Returns the actual value of that auction with knowledge penalty. Same as `raw_true_value`, it is 0 when not 
+        known.
         :return: true value with knowledge penalty
         """
         if self.params["phase"] == self.PHASE_1:
