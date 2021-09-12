@@ -5,10 +5,6 @@ This auction bot competed in [the USRC x SYNCS Competitive Coding Challenge 2021
 
 ## Files
 
-### Preparation
-This directory contains a python adaptation of [aeham03's auction bot](https://github.com/aehm03/auction-bot). This implementation 
-adds support for more than 2 bidders in a game. This is completed before the start of the competition as preparation.
-
 ### Game files
 
 Provided by the organiser, changes made for testing purpose
